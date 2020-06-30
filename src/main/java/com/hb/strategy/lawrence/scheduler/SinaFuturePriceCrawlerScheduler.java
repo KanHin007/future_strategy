@@ -3,6 +3,7 @@ package com.hb.strategy.lawrence.scheduler;
 import com.alibaba.fastjson.JSONArray;
 import com.hb.strategy.lawrence.config.SinaConfig;
 import com.hb.strategy.lawrence.model.SinaPhpResponseModel;
+import com.hb.strategy.lawrence.strategy.Strategy;
 import com.hb.strategy.lawrence.util.DingDingSender;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
@@ -12,6 +13,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
+import javax.annotation.Resource;
 import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.Date;
@@ -33,6 +35,12 @@ public class SinaFuturePriceCrawlerScheduler {
 
     @Autowired
     RestTemplate restTemplate;
+
+    /**
+     * 暂时使用回调策略
+     */
+    @Resource(name = "callBackStrategy")
+    Strategy strategy;
 
     /**
      * 执行定时任务的方法
@@ -60,42 +68,13 @@ public class SinaFuturePriceCrawlerScheduler {
                 .replaceAll("@TIMESTAMP", timestamp)
                 .replaceAll("@TYPE", futureType);
 
-        //      System.out.println("当前的品种链接为 ： " + url);
+        //      logger.info("当前的品种链接为 ： {}" , url);
         // 获取结果
         String resultStr = restTemplate.getForObject(url, String.class);
         if (resultStr != null) {
             List<SinaPhpResponseModel> models = parseSinaPhpResponse(resultStr);
-            int modelSize = models.size();
-            if (modelSize >= 3) {
-                Date currentTime = new Date();
-                // 取出前两个5分钟model进行比较
-                SinaPhpResponseModel preModel = models.get(modelSize - 3);
-                SinaPhpResponseModel middleModel = models.get(modelSize - 2);
-                BigDecimal preDValue = preModel.getClose().subtract(preModel.getOpen());
-                BigDecimal middleDValue = middleModel.getClose().subtract(middleModel.getOpen());
-                //  logger.info("品种{},,,,preModel is {}", futureType, preModel);
-                //  logger.info("品种{},,,,middle is {}", futureType, middleModel);
-                // 进行检查
-                // 阳包阴吞没
-                if (preDValue.compareTo(BigDecimal.ZERO) > 0
-                        && middleDValue.compareTo(BigDecimal.ZERO) < 0
-                        && preModel.getClose().compareTo(middleModel.getOpen()) <= 0
-                        && preModel.getOpen().compareTo(middleModel.getClose()) >= 0) {
-                    // 钉钉通知
-                    logger.info("时间{},,,当前品种：{}   出现了阳包阴吞没", currentTime, futureType);
-                    DingDingSender.sendMessage("当前时间 " + currentTime + " | 当前品种 " + futureType + " | 出现了后阴包前阳吞没");
-                }
-                // 阴包阳吞没
-                if (preDValue.compareTo(BigDecimal.ZERO) < 0
-                        && middleDValue.compareTo(BigDecimal.ZERO) > 0
-                        && preModel.getClose().compareTo(middleModel.getOpen()) >= 0
-                        && preModel.getOpen().compareTo(middleModel.getClose()) <= 0) {
-                    // 钉钉通知
-                    logger.info("时间{},,,当前品种：{}   出现了阴包阳吞没", currentTime, futureType);
-                    DingDingSender.sendMessage("当前时间 " + currentTime + " | 当前品种 " + futureType + " | 出现了后阳包前阴吞没");
-                }
-
-            }
+            // 策略检查并提醒
+            strategy.checkAndRemind(futureType, models);
         }
 
     }
