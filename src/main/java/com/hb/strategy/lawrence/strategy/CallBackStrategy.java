@@ -37,8 +37,8 @@ public class CallBackStrategy implements Strategy {
             if (result != 0) {
                 String description = result == -1 ? "阴包阳" : "阳包阴";
                 description += "吞没";
-                logger.info("时间{},,,当前品种：{}   出现了{}", currentTime, futureType, description);
-                DingDingSender.sendMessage("当前时间 " + currentTime + " | 当前品种 " + futureType + " | 出现了 " + description);
+                //  logger.info("时间{},,,当前品种：{}   出现了{}", currentTime, futureType, description);
+                //  DingDingSender.sendMessage("当前时间 " + currentTime + " | 当前品种 " + futureType + " | 出现了 " + description);
                 // 接着判断趋势,选取前几根k线，进行判断，
                 BigDecimal compareLength = lastModel.getOpenCloseDValue().abs().multiply(DOUBLE_MULTI);
                 for (int i = size - 4; i >= size - 10; i--) {
@@ -46,7 +46,9 @@ public class CallBackStrategy implements Strategy {
                     // 如果当前的最高价-最低价的长度 大于 最后一根k的两杯,
                     // 则判断前方有过相同方向的暴涨暴跌
                     if (temp.getkLineType() == lastModel.getkLineType() &&
-                            temp.getHighLowDValue().abs().compareTo(compareLength) >= 0) {
+                            temp.getHighLowDValue().abs().compareTo(compareLength) >= 0 &&
+                            ((temp.getkLineType() == KLineType.POSITIVE_LINE && temp.getOpen().compareTo(lastModel.getOpen()) < 0)
+                                    || (temp.getkLineType() == KLineType.NEGATIVE_LINE && temp.getOpen().compareTo(lastModel.getOpen()) > 0))) {
                         //打印日志，发送钉钉，直接返回
                         logger.info("时间{},,,当前品种：{}   出现了{} ，，， + 同方向的回调", currentTime, futureType, description);
                         DingDingSender.sendMessage("当前时间 " + currentTime + " | 当前品种 " + futureType + " | 出现了 " + description + " +同方向的回调");
