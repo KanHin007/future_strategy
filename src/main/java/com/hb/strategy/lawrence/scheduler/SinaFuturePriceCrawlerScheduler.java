@@ -50,6 +50,7 @@ public class SinaFuturePriceCrawlerScheduler {
     public void schedule() {
 
         List<String> types = sinaConfig.getFutureTypes();
+        System.out.println(types);
         types.parallelStream().forEach(v -> {
             checkPriceWithFiveMinutes(sinaConfig.getInnerUrlPrefix(), v);
         });

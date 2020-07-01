@@ -32,7 +32,8 @@ public class CallBackStrategy implements Strategy {
             SinaPhpResponseModel preModel = (SinaPhpResponseModel) kLines.get(size - 3);
             SinaPhpResponseModel lastModel = (SinaPhpResponseModel) kLines.get(size - 2);
             // 首先确认是否吞没
-            int result = checkEmbezzle(preModel, lastModel);
+            //   int result = checkEmbezzle(preModel, lastModel);
+            int result = checkEmbezzleWithHatch(preModel, lastModel);
             // 确定有了吞没
             if (result != 0) {
                 String description = result == -1 ? "阴包阳" : "阳包阴";
@@ -80,6 +81,27 @@ public class CallBackStrategy implements Strategy {
                 last.getkLineType() == KLineType.POSITIVE_LINE &&
                 pre.getClose().compareTo(last.getOpen()) >= 0 &&
                 pre.getOpen().compareTo(last.getClose()) <= 0) {
+            return 1;
+        } else {
+            return 0;
+        }
+    }
+
+    private int checkEmbezzleWithHatch(SinaPhpResponseModel pre, SinaPhpResponseModel last) {
+        // 前阳后阴 吞没 并且阳线的上影线很长 是实体的两倍
+        if (pre.getkLineType() == KLineType.POSITIVE_LINE &&
+                last.getkLineType() == KLineType.NEGATIVE_LINE &&
+                pre.getClose().compareTo(last.getOpen()) <= 0 &&
+                pre.getOpen().compareTo(last.getClose()) >= 0 &&
+                pre.getHigh().subtract(pre.getClose()).compareTo(pre.getOpenCloseDValue().abs().multiply(DOUBLE_MULTI)) >= 0) {
+            return -1;
+        }
+        // 前阴后阳 吞没 并且阴线的下影线很长 是实体的两倍
+        else if (pre.getkLineType() == KLineType.NEGATIVE_LINE &&
+                last.getkLineType() == KLineType.POSITIVE_LINE &&
+                pre.getClose().compareTo(last.getOpen()) >= 0 &&
+                pre.getOpen().compareTo(last.getClose()) <= 0 &&
+                pre.getClose().subtract(pre.getLow()).compareTo(pre.getOpenCloseDValue().multiply(DOUBLE_MULTI)) >= 0) {
             return 1;
         } else {
             return 0;
